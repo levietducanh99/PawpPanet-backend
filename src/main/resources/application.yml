@@ -1,3 +1,6 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   jpa:
     hibernate:
@@ -18,3 +21,4 @@ logging:
 # Note: DATABASE_URL is loaded from .env and converted to JDBC format by DotenvConfig.
 # DotenvConfig sets: spring.datasource.url, spring.datasource.username, spring.datasource.password
 # For Heroku: Set DATABASE_URL in Config Vars (Heroku auto-provides this)
+# PORT is provided by Heroku and must be bound for the app to start successfully
