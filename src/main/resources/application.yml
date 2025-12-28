@@ -30,6 +30,10 @@ logging:
   level:
     org.flywaydb: DEBUG
 
+jwt:
+    key: "452f28f64659ccb32eceedc4efb09b139036e5c6d144aafd8752076a5ad69dc0"
+
+
 # Note: DATABASE_URL is loaded from .env and converted to JDBC format by DotenvConfig.
 # DotenvConfig sets: spring.datasource.url, spring.datasource.username, spring.datasource.password
 # For Heroku: Set DATABASE_URL in Config Vars (Heroku auto-provides this)
