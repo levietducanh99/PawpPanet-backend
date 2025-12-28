@@ -17,7 +17,8 @@ public enum ErrorCode {
     POST_NOT_FOUND(404, "Post not found"),
     UNAUTHORIZED_ACCESS(403, "Unauthorized access"),
     FOLLOW_RELATIONSHIP_NOT_FOUND(404, "Follow relationship not found"),
-    INTERNAL_SERVER_ERROR(500, "Internal server error")
+    INTERNAL_SERVER_ERROR(500, "Internal server error"),
+    INVALID_CREDENTIALS(401, "Invalid credentials")
     ;
     private int code;
     private String message;
