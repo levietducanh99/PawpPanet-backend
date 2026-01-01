@@ -5,6 +5,7 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.pawpplanet.backend.auth.dto.TokenType;
 import com.pawpplanet.backend.auth.dto.request.*;
 import com.pawpplanet.backend.auth.dto.response.AuthResponse;
 import com.pawpplanet.backend.auth.dto.response.IntrospectResponse;
@@ -12,10 +13,12 @@ import com.pawpplanet.backend.auth.entity.InvalidatedToken;
 import com.pawpplanet.backend.auth.repository.InvalidatedTokenRepository;
 import com.pawpplanet.backend.common.exception.AppException;
 import com.pawpplanet.backend.common.exception.ErrorCode;
+import com.pawpplanet.backend.common.service.MailService;
 import com.pawpplanet.backend.user.dto.UserResponse;
 import com.pawpplanet.backend.user.entity.Role;
 import com.pawpplanet.backend.user.entity.UserEntity;
 import com.pawpplanet.backend.user.repository.UserRepository;
+import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,19 +41,33 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthService {
 
-    @Autowired
     private UserRepository userRepository;
 
-    @Autowired
     private InvalidatedTokenRepository invalidatedTokenRepository;
+
+    @Autowired
+    private MailService mailService;
+
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
 
     @Value("${jwt.key}")
     protected String SIGNER_KEY;
 
+    @Value("${jwt.valid-ms}")
+    protected Long TOKEN_VALID_MS;
 
-    public UserEntity register(RegisterRequest request) {
+    @Value("${jwt.refreshable-ms}")
+    protected Long TOKEN_REFRESHABLE_MS;
+
+    @Autowired
+    public AuthService(UserRepository userRepository, InvalidatedTokenRepository invalidatedTokenRepository) {
+        this.userRepository = userRepository;
+        this.invalidatedTokenRepository = invalidatedTokenRepository;
+    }
+
+
+    public UserEntity register(RegisterRequest request) throws MessagingException {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
@@ -67,6 +84,8 @@ public class AuthService {
         userEntity.setRole(Role.USER.name());
         userEntity.setBio(request.getBio());
         userEntity.setAvatarUrl(request.getAvatarUrl());
+        String token = generateToken(userEntity, TokenType.EMAIL_VERIFICATION.name());
+        mailService.sendVerifyEmail(request.getEmail(), token);
         return userRepository.save(userEntity);
     }
 
@@ -78,7 +97,7 @@ public class AuthService {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        String gerneratedToken = generateToken(user);
+        String gerneratedToken = generateToken(user, TokenType.ACCESS.name());
         AuthResponse authResponse = new AuthResponse();
         authResponse.setToken(gerneratedToken);
         authResponse.setAuthenticated(true);
@@ -86,13 +105,18 @@ public class AuthService {
     }
 
     public void logout(LogoutRequest request) throws ParseException, JOSEException {
-        var signedJWT = verifyToken(request.getToken());
-        String jti = signedJWT.getJWTClaimsSet().getJWTID();
-        Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-        InvalidatedToken invalidatedToken = new InvalidatedToken();
-        invalidatedToken.setId(jti);
-        invalidatedToken.setExpiredAt(expirationTime);
-        invalidatedTokenRepository.save(invalidatedToken);
+        try {
+            var signedJWT = verifyToken(request.getToken(), true);
+            String jti = signedJWT.getJWTClaimsSet().getJWTID();
+            Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+            InvalidatedToken invalidatedToken = new InvalidatedToken();
+            invalidatedToken.setId(jti);
+            invalidatedToken.setExpiredAt(expirationTime);
+            invalidatedTokenRepository.save(invalidatedToken);
+        } catch (AppException e) {
+            log.info("token already invalidated");
+        }
+
     }
 
     public void changePassword(ChangePasswordRequest request) throws ParseException, JOSEException {
@@ -116,12 +140,14 @@ public class AuthService {
         logout(logoutRequest);
     }
 
-    private SignedJWT verifyToken(String token) throws JOSEException, ParseException {
+    private SignedJWT verifyToken(String token, boolean isRefresh) throws JOSEException, ParseException {
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
 
         SignedJWT signedJWT = SignedJWT.parse(token);
 
-        Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+        Date expiryTime = (isRefresh)
+                ? new Date(signedJWT.getJWTClaimsSet().getIssueTime().toInstant() .plus(TOKEN_REFRESHABLE_MS, ChronoUnit.MILLIS).toEpochMilli())
+                : signedJWT.getJWTClaimsSet().getExpirationTime();
 
         var verified = signedJWT.verify(verifier);
 
@@ -138,16 +164,17 @@ public class AuthService {
 
 
 
-    private String generateToken(UserEntity userEntity) {
+    private String generateToken(UserEntity user, String type) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(userEntity.getEmail())
+                .subject(user.getEmail())
                 .issuer("pawplanet")
                 .issueTime(new Date())
                 .jwtID(UUID.randomUUID().toString())
-                .claim("scope", userEntity.getRole())
+                .claim("type", type)
+                .claim("scope", user.getRole())
                 .expirationTime(new Date(
-                        Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
+                        Instant.now().plus(TOKEN_VALID_MS, ChronoUnit.MILLIS).toEpochMilli()
                 ))
                 .build();
 
@@ -167,7 +194,7 @@ public class AuthService {
         var token = request.getToken();
 
         try {
-            verifyToken(token);
+            verifyToken(token, false);
         } catch (AppException ex) {
             IntrospectResponse introspectResponse = new IntrospectResponse();
             introspectResponse.setValid(false);
@@ -180,7 +207,7 @@ public class AuthService {
     }
 
     public AuthResponse refreshToken(IntrospectRequest request) throws ParseException, JOSEException {
-        var signedJWT = verifyToken(request.getToken());
+        var signedJWT = verifyToken(request.getToken(), true);
         var jti = signedJWT.getJWTClaimsSet().getJWTID();
         var expriationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
         InvalidatedToken invalidatedToken = new InvalidatedToken();
@@ -191,7 +218,7 @@ public class AuthService {
         String userEmail = signedJWT.getJWTClaimsSet().getSubject();
         UserEntity userEntity = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        String gerneratedToken = generateToken(userEntity);
+        String gerneratedToken = generateToken(userEntity, TokenType.REFRESH.name());
         AuthResponse authResponse = new AuthResponse();
         authResponse.setToken(gerneratedToken);
         authResponse.setAuthenticated(true);
@@ -205,6 +232,10 @@ public class AuthService {
         String userEmail = authentication.getName();
         UserEntity userEntity = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        return getUserResponse(userEntity);
+    }
+
+    private UserResponse getUserResponse(UserEntity userEntity) {
         UserResponse userResponse = new UserResponse();
         userResponse.setUsername(userEntity.getUsername());
         userResponse.setEmail(userEntity.getEmail());
@@ -219,15 +250,42 @@ public class AuthService {
         UserEntity userEntity = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         getCurrentUser();
-        UserResponse userResponse = new UserResponse();
-        userResponse.setUsername(userEntity.getUsername());
-        userResponse.setEmail(userEntity.getEmail());
-        userResponse.setBio(userEntity.getBio());
-        userResponse.setAvatarUrl(userEntity.getAvatarUrl());
-        userResponse.setRole(userEntity.getRole());
-
-        return userResponse;
+        return getUserResponse(userEntity);
     }
 
+    private String verifyToken(String token, String expectedType) throws ParseException {
+        SignedJWT signedJWT = SignedJWT.parse(token);
+        String userEmail = signedJWT.getJWTClaimsSet().getSubject();
+        String type = (String) signedJWT.getJWTClaimsSet().getClaim("type");
+        if(!type.equals(expectedType)) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
+        return userEmail;
+    }
 
+    public void verifyEmail(String token) throws ParseException {
+        String userEmail = verifyToken(token, TokenType.EMAIL_VERIFICATION.name());
+        UserEntity userEntity = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        userEntity.setIsVerified(true);
+        userRepository.save(userEntity);
+    }
+
+    public void resetPassword(String token, ResetPasswordRequest request) throws ParseException, JOSEException {
+        String userEmail = verifyToken(token, TokenType.PASSWORD_RESET.name());
+        UserEntity userEntity = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        userEntity.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(userEntity);
+        LogoutRequest requestLogout = new LogoutRequest();
+        requestLogout.setToken(token);
+        logout(requestLogout);
+    }
+
+    public void forgotPassword(ForgotPasswordRequest request) throws MessagingException {
+        UserEntity userEntity = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        String token = generateToken(userEntity, TokenType.PASSWORD_RESET.name());
+        mailService.sendResetPasswordEmail(request.getEmail(), token);
+    }
 }

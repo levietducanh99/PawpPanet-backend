@@ -14,6 +14,18 @@ spring:
       max-lifetime: 600000
       connection-timeout: 30000
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: taihoan6106@gmail.com
+    password: ${MAIL_SERVICE}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -56,6 +68,8 @@ cloudinary:
 
 jwt:
     key: "452f28f64659ccb32eceedc4efb09b139036e5c6d144aafd8752076a5ad69dc0"
+    refreshable-ms: 86400000  # 1 day in milliseconds
+    valid-ms: 3600000  # 1 hour in milliseconds
 
 
 # Note: DATABASE_URL is loaded from .env and converted to JDBC format by DotenvConfig.
