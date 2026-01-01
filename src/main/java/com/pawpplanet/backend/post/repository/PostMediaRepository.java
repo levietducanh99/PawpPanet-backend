@@ -9,6 +9,9 @@ import java.util.List;
 @Repository
 public interface PostMediaRepository extends JpaRepository<PostMediaEntity, Long> {
 
-    List<PostMediaEntity> findByPostIdOrderByDisplayOrder(Long postId);
+    void deleteByPostId(Long postId);
+    List<PostMediaEntity> findByPostId(Long postId);
+
+
 }
 
