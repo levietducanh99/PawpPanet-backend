@@ -2,7 +2,9 @@ package com.pawpplanet.backend.encyclopedia.controller;
 
 import com.pawpplanet.backend.common.dto.ApiResponse;
 import com.pawpplanet.backend.encyclopedia.dto.AnimalClassResponse;
+import com.pawpplanet.backend.encyclopedia.dto.SpeciesResponse;
 import com.pawpplanet.backend.encyclopedia.service.AnimalClassService;
+import com.pawpplanet.backend.encyclopedia.service.SpeciesService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import java.util.List;
 public class AnimalClassController {
 
     private final AnimalClassService service;
+    private final SpeciesService speciesService;
 
     @GetMapping
     @Operation(summary = "Lấy danh sách các lớp động vật")
@@ -45,5 +48,13 @@ public class AnimalClassController {
         resp.setStatusCode(0);
         return ResponseEntity.ok(resp);
     }
-}
 
+    @GetMapping("/{classId}/species")
+    @Operation(summary = "Lấy danh sách species theo classId")
+    public ResponseEntity<ApiResponse<List<SpeciesResponse>>> getSpeciesByClass(@PathVariable Long classId) {
+        ApiResponse<List<SpeciesResponse>> resp = new ApiResponse<>();
+        resp.setResult(speciesService.getByClassId(classId));
+        resp.setStatusCode(0);
+        return ResponseEntity.ok(resp);
+    }
+}

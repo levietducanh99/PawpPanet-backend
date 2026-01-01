@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -40,6 +41,12 @@ public class SpeciesService {
         return speciesRepository.findById(id).map(this::toDto);
     }
 
+    // New: list species by classId (non-paged)
+    public List<SpeciesResponse> getByClassId(Long classId) {
+        List<SpeciesEntity> list = speciesRepository.findByClassId(classId);
+        return list.stream().map(this::toDto).collect(Collectors.toList());
+    }
+
     private SpeciesResponse toDto(SpeciesEntity e) {
         SpeciesResponse r = new SpeciesResponse();
         r.setId(e.getId());
@@ -50,4 +57,3 @@ public class SpeciesService {
         return r;
     }
 }
-
