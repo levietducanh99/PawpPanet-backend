@@ -1,6 +1,7 @@
 package com.pawpplanet.backend.encyclopedia.controller;
 
 import com.pawpplanet.backend.common.dto.ApiResponse;
+import com.pawpplanet.backend.common.dto.PagedResult;
 import com.pawpplanet.backend.encyclopedia.dto.AnimalClassResponse;
 import com.pawpplanet.backend.encyclopedia.dto.SpeciesResponse;
 import com.pawpplanet.backend.encyclopedia.service.AnimalClassService;
@@ -50,10 +51,14 @@ public class AnimalClassController {
     }
 
     @GetMapping("/{classId}/species")
-    @Operation(summary = "Lấy danh sách species theo classId")
-    public ResponseEntity<ApiResponse<List<SpeciesResponse>>> getSpeciesByClass(@PathVariable Long classId) {
-        ApiResponse<List<SpeciesResponse>> resp = new ApiResponse<>();
-        resp.setResult(speciesService.getByClassId(classId));
+    @Operation(summary = "Lấy danh sách species theo classId (có phân trang)")
+    public ResponseEntity<ApiResponse<PagedResult<SpeciesResponse>>> getSpeciesByClass(
+            @PathVariable Long classId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size
+    ) {
+        ApiResponse<PagedResult<SpeciesResponse>> resp = new ApiResponse<>();
+        resp.setResult(speciesService.getSpecies(page, size, classId));
         resp.setStatusCode(0);
         return ResponseEntity.ok(resp);
     }
