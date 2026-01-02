@@ -38,16 +38,12 @@ public class SecurityConfig {
 
     // Auth endpoints (login, register, etc.)
     private final String[] AUTH_ENDPOINTS = {
-            "/api/v1/auth/register",
-            "/api/v1/auth/login",
-            "/api/v1/auth/introspect"
+            "/api/v1/auth/**"
     };
 
-    @Value("${jwt.key}")
-    private String SIGNER_KEY;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, CustomJwtDecoder customJwtDecoder) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
 
         http.authorizeHttpRequests(request ->
@@ -69,33 +65,26 @@ public class SecurityConfig {
                         // Health check & Actuator
                         .requestMatchers("/health", "/api/v1/health", "/actuator/**").permitAll()
 
-                        // Auth endpoints - POST only
+                        // Auth endpoints - login, register, etc.
                         .requestMatchers(HttpMethod.POST, AUTH_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, AUTH_ENDPOINTS).permitAll()
+
+
 
                         // Public GET endpoints - read-only access
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/posts/**",
                                 "/api/v1/users/**",
                                 "/api/v1/pets/**",
-                                "/api/v1/encyclopedia/**").permitAll()
+                                "/api/v1/encyclopedia/**").permitAll().anyRequest().authenticated());
 
-                        // All other requests require authentication
-                        .anyRequest().authenticated()
-        );
-
-        http.oauth2ResourceServer(oauth2 ->
-                oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder()))
-        );
+        http.
+                oauth2ResourceServer(
+                oauth2
+                        -> oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(customJwtDecoder)));
 
         return http.build();
     }
 
-    @Bean
-    JwtDecoder jwtDecoder() {
-        SecretKeySpec keySpec = new SecretKeySpec(SIGNER_KEY.getBytes(), "HS512");
-        return
-                NimbusJwtDecoder.withSecretKey(keySpec).
-                        macAlgorithm(MacAlgorithm.HS512).
-                        build();
-    }
+
 }
