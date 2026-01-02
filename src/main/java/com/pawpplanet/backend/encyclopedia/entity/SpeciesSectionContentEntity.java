@@ -22,9 +22,16 @@ public class SpeciesSectionContentEntity {
     @Column(name = "section_id")
     private Long sectionId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "section_id", insertable = false, updatable = false)
+    private SpeciesSectionEntity section;
+
     private String language;
 
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(name = "display_order")
+    private Integer displayOrder;
 }
 
