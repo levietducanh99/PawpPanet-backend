@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 public class AnimalClassService {
 
     private final AnimalClassRepository repository;
+    private final EncyclopediaMediaService mediaService;
 
     public List<AnimalClassResponse> getAllClasses() {
         return repository.findAll().stream()
@@ -36,6 +37,7 @@ public class AnimalClassService {
         r.setName(e.getName());
         r.setCode(e.getCode());
         r.setDescription(e.getDescription());
+        r.setAvatarUrl(mediaService.getThumbnailUrl("class", e.getId()));
         return r;
     }
 }

@@ -54,7 +54,7 @@ public class AnimalClassController {
     @Operation(summary = "Lấy danh sách species theo classId (có phân trang)")
     public ResponseEntity<ApiResponse<PagedResult<SpeciesResponse>>> getSpeciesByClass(
             @PathVariable Long classId,
-            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "10") int size
     ) {
         ApiResponse<PagedResult<SpeciesResponse>> resp = new ApiResponse<>();

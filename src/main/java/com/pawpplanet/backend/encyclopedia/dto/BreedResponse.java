@@ -10,5 +10,6 @@ public class BreedResponse {
     private String origin;
     private String shortDescription;
     private String taxonomyType;
+    private String avatarUrl;  // Thumbnail for list display
 }
 

@@ -9,5 +9,6 @@ public class SpeciesResponse {
     private String name;
     private String scientificName;
     private String description;
+    private String avatarUrl;  // Thumbnail for list display
 }
 

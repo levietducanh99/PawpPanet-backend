@@ -2,8 +2,7 @@ package com.pawpplanet.backend.encyclopedia.controller;
 
 import com.pawpplanet.backend.common.dto.ApiResponse;
 import com.pawpplanet.backend.common.dto.PagedResult;
-import com.pawpplanet.backend.encyclopedia.dto.BreedResponse;
-import com.pawpplanet.backend.encyclopedia.dto.BreedAttributeResponse;
+import com.pawpplanet.backend.encyclopedia.dto.*;
 import com.pawpplanet.backend.encyclopedia.service.BreedService;
 import com.pawpplanet.backend.encyclopedia.service.BreedAttributeService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +25,7 @@ public class BreedController {
     @GetMapping
     @Operation(summary = "Lấy danh sách breeds có phân trang, optional filter: speciesId, taxonomyType")
     public ResponseEntity<ApiResponse<PagedResult<BreedResponse>>> list(
-            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             @RequestParam(value = "speciesId", required = false) Long speciesId,
             @RequestParam(value = "taxonomyType", required = false) String taxonomyType
@@ -47,10 +46,10 @@ public class BreedController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Lấy chi tiết breed theo ID")
-    public ResponseEntity<ApiResponse<BreedResponse>> getById(@PathVariable Long id) {
-        ApiResponse<BreedResponse> resp = new ApiResponse<>();
-        service.getById(id).ifPresent(resp::setResult);
+    @Operation(summary = "Lấy chi tiết breed theo ID (bao gồm attributes và sections)")
+    public ResponseEntity<ApiResponse<BreedDetailResponse>> getById(@PathVariable Long id) {
+        ApiResponse<BreedDetailResponse> resp = new ApiResponse<>();
+        service.getDetailById(id).ifPresent(resp::setResult);
         resp.setStatusCode(0);
         return ResponseEntity.ok(resp);
     }

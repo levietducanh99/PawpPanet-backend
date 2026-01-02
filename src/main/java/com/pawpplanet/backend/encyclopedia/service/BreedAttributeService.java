@@ -21,13 +21,15 @@ public class BreedAttributeService {
     private final BreedAttributeRepository repository;
 
     public PagedResult<BreedAttributeResponse> getAttributes(Long breedId, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
+        // Convert 1-based page (from API) to 0-based page (for Spring Data)
+        int zeroBasedPage = Math.max(0, page - 1);
+        Pageable pageable = PageRequest.of(zeroBasedPage, Math.max(1, size));
         Page<BreedAttributeEntity> p = repository.findByBreedId(breedId, pageable);
 
         PagedResult<BreedAttributeResponse> r = new PagedResult<>();
         r.setItems(p.getContent().stream().map(this::toDto).collect(Collectors.toList()));
         r.setTotalElements(p.getTotalElements());
-        r.setPage(p.getNumber());
+        r.setPage(p.getNumber() + 1);  // Convert back to 1-based for response
         r.setSize(p.getSize());
         return r;
     }
