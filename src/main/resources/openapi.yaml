@@ -2416,6 +2416,9 @@
           "name": {
             "type": "string"
           },
+          "slug": {
+            "type": "string"
+          },
           "scientificName": {
             "type": "string"
           },
@@ -2552,6 +2555,9 @@
           "name": {
             "type": "string"
           },
+          "slug": {
+            "type": "string"
+          },
           "scientificName": {
             "type": "string"
           },
@@ -2648,6 +2654,9 @@
           "code": {
             "type": "string"
           },
+          "slug": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
@@ -2716,6 +2725,9 @@
             "format": "int64"
           },
           "name": {
+            "type": "string"
+          },
+          "slug": {
             "type": "string"
           },
           "origin": {
@@ -2805,6 +2817,9 @@
             "format": "int64"
           },
           "name": {
+            "type": "string"
+          },
+          "slug": {
             "type": "string"
           },
           "origin": {
