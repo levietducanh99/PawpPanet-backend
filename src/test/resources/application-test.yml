@@ -30,10 +30,9 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    validate-on-migrate: true
+    enabled: false  # Disable for tests - migrations run separately in CI setup
+    # In CI: migrations are run via mvn flyway:migrate before tests
+    # Locally: ensure your test database has schema (run app once or flyway:migrate)
 
 # JWT configuration
 jwt:
