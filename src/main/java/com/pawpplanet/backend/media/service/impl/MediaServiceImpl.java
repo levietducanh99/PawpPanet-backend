@@ -160,6 +160,9 @@ public class MediaServiceImpl implements MediaService {
             case USER_AVATAR:
                 return String.format("pawplanet/users/%d/avatar", request.getOwnerId());
 
+            case USER_COVER:
+                return String.format("pawplanet/users/%d/cover", request.getOwnerId());
+
             case PET_AVATAR:
                 return String.format("pawplanet/pets/%d/avatar", request.getOwnerId());
 
@@ -185,27 +188,25 @@ public class MediaServiceImpl implements MediaService {
 
     /**
      * Optionally determine public_id for specific contexts
-     * For avatars, we can use a fixed name to ensure replacement
-     * For galleries and posts, we let Cloudinary generate unique IDs
+     * Only set for encyclopedia (using slug)
+     * For user/pet media, let Cloudinary generate unique IDs
      */
     private String determinePublicId(MediaSignRequest request) {
         UploadContext context = request.getContext();
 
         switch (context) {
-            case USER_AVATAR:
-            case PET_AVATAR:
-                // For avatars, use fixed name so uploads replace the old avatar
-                return "avatar";
-
             case ENCYCLOPEDIA_CLASS:
             case ENCYCLOPEDIA_SPECIES:
             case ENCYCLOPEDIA_BREED:
                 // For encyclopedia, use slug as public_id
                 return request.getSlug();
 
+            case USER_AVATAR:
+            case USER_COVER:
+            case PET_AVATAR:
             case PET_GALLERY:
             case POST_MEDIA:
-                // For galleries and posts, let Cloudinary generate unique IDs
+                // Let Cloudinary generate unique IDs (no replacement)
                 return null;
 
             default:

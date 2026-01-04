@@ -28,8 +28,20 @@ public class UserEntity {
 
     private String role;
 
+    @Column(name = "full_name")
+    private String fullName;  // Tên đầy đủ của user
+
+    @Column(name = "avatar_public_id", columnDefinition = "TEXT")
+    private String avatarPublicId;  // Cloudinary public_id for avatar
+
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
+
+    @Column(name = "cover_image_public_id", columnDefinition = "TEXT")
+    private String coverImagePublicId;  // Cloudinary public_id for cover image
+
+    @Column(name = "cover_image_url", columnDefinition = "TEXT")
+    private String coverImageUrl;  // Ảnh bìa profile
 
     @Column(columnDefinition = "TEXT")
     private String bio;

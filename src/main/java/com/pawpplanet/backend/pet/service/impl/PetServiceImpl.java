@@ -2,7 +2,11 @@ package com.pawpplanet.backend.pet.service.impl;
 
 import com.pawpplanet.backend.encyclopedia.repository.BreedRepository;
 import com.pawpplanet.backend.encyclopedia.repository.SpeciesRepository;
+import com.pawpplanet.backend.media.service.CloudinaryUrlBuilder;
+import com.pawpplanet.backend.pet.dto.AddPetMediaRequest;
+import com.pawpplanet.backend.pet.dto.AddPetMediaResponse;
 import com.pawpplanet.backend.pet.dto.CreatePetRequestDTO;
+import com.pawpplanet.backend.pet.dto.PetMediaDTO;
 import com.pawpplanet.backend.pet.dto.PetProfileDTO;
 import com.pawpplanet.backend.pet.dto.UpdatePetRequestDTO;
 import com.pawpplanet.backend.pet.entity.PetEntity;
@@ -20,9 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @Transactional
@@ -34,19 +37,22 @@ public class PetServiceImpl implements PetService {
     private final BreedRepository breedRepository;
     private final PetMediaRepository petMediaRepository;
     private final FollowPetService followPetService;
+    private final CloudinaryUrlBuilder cloudinaryUrlBuilder;
 
     public PetServiceImpl(PetRepository petRepository,
                           UserRepository userRepository,
                           SpeciesRepository speciesRepository,
                           BreedRepository breedRepository,
                           PetMediaRepository petMediaRepository,
-                          FollowPetService followPetService) {
+                          FollowPetService followPetService,
+                          CloudinaryUrlBuilder cloudinaryUrlBuilder) {
         this.petRepository = petRepository;
         this.userRepository = userRepository;
         this.speciesRepository = speciesRepository;
         this.breedRepository = breedRepository;
         this.petMediaRepository = petMediaRepository;
         this.followPetService = followPetService;
+        this.cloudinaryUrlBuilder = cloudinaryUrlBuilder;
     }
 
     @Override
@@ -175,9 +181,9 @@ public class PetServiceImpl implements PetService {
 
         petRepository.save(pet);
 
-        // 5️⃣ Update avatar nếu có
-        if (request.getUrl() != null && !request.getUrl().isBlank()) {
-
+        // 5️⃣ Update avatar nếu có publicId
+        if (request.getAvatarPublicId() != null && !request.getAvatarPublicId().isBlank()) {
+            // Archive old avatar
             petMediaRepository
                     .findByPetIdAndDisplayOrder(petId, 1)
                     .ifPresent(old -> {
@@ -185,11 +191,18 @@ public class PetServiceImpl implements PetService {
                         petMediaRepository.save(old);
                     });
 
+            // Build URL and save
+            String avatarUrl = cloudinaryUrlBuilder.buildOptimizedUrl(
+                    request.getAvatarPublicId(),
+                    "image"
+            );
+
             PetMediaEntity newMedia = new PetMediaEntity();
             newMedia.setPetId(petId);
             newMedia.setType("image");
             newMedia.setRole("avatar");
-            newMedia.setUrl(request.getUrl());
+            newMedia.setPublicId(request.getAvatarPublicId());
+            newMedia.setUrl(avatarUrl);
             newMedia.setDisplayOrder(1);
 
             petMediaRepository.save(newMedia);
@@ -201,6 +214,102 @@ public class PetServiceImpl implements PetService {
 
         PetProfileDTO dto = PetMapper.toProfileDTO(pet, mediaList);
         return enrichPetDTO(dto, pet);
+    }
+
+    @Override
+    public AddPetMediaResponse addMediaToGallery(Long petId, AddPetMediaRequest request) {
+        // 1️⃣ Validate pet exists
+        PetEntity pet = petRepository.findById(petId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Pet not found"
+                        )
+                );
+
+        // 2️⃣ Verify ownership
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Long currentUserId = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED,
+                                "User not found"
+                        )
+                )
+                .getId();
+
+        if (!pet.getOwnerId().equals(currentUserId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You are not allowed to add media to this pet"
+            );
+        }
+
+        // 3️⃣ Validate request
+        if (request.getMediaItems() == null || request.getMediaItems().isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Media items cannot be empty"
+            );
+        }
+
+        // 4️⃣ Get current max display order for gallery items
+        List<PetMediaEntity> existingGalleryMedia = petMediaRepository.findByPetId(petId)
+                .stream()
+                .filter(m -> "gallery".equals(m.getRole()))
+                .toList();
+
+        int maxDisplayOrder = existingGalleryMedia.stream()
+                .mapToInt(PetMediaEntity::getDisplayOrder)
+                .max()
+                .orElse(0);
+
+        // 5️⃣ Create and save new media entities
+        List<PetMediaEntity> newMediaEntities = new ArrayList<>();
+        int currentDisplayOrder = maxDisplayOrder + 1;
+
+        for (AddPetMediaRequest.MediaItem item : request.getMediaItems()) {
+            // Build URL from public ID with optimization (builder validates internally)
+            String url = cloudinaryUrlBuilder.buildOptimizedUrl(
+                    item.getPublicId(),
+                    item.getType()
+            );
+
+            PetMediaEntity mediaEntity = new PetMediaEntity();
+            mediaEntity.setPetId(petId);
+            mediaEntity.setType(item.getType());
+            mediaEntity.setRole("gallery");
+            mediaEntity.setPublicId(item.getPublicId());
+            mediaEntity.setUrl(url);
+            mediaEntity.setDisplayOrder(currentDisplayOrder++);
+
+            newMediaEntities.add(mediaEntity);
+        }
+
+        // Save all media entities
+        List<PetMediaEntity> savedMedia = petMediaRepository.saveAll(newMediaEntities);
+
+        // 6️⃣ Build response
+        List<PetMediaDTO> addedMediaDTOs = savedMedia.stream()
+                .map(PetMapper::toMediaDTO)
+                .toList();
+
+        // Get total gallery count
+        int totalGalleryCount = (int) petMediaRepository.findByPetId(petId)
+                .stream()
+                .filter(m -> "gallery".equals(m.getRole()))
+                .count();
+
+        return AddPetMediaResponse.builder()
+                .petId(petId)
+                .addedMedia(addedMediaDTOs)
+                .totalGalleryCount(totalGalleryCount)
+                .message("Successfully added " + savedMedia.size() + " media item(s) to gallery")
+                .build();
     }
 
 

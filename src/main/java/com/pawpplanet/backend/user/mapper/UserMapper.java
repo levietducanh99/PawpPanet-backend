@@ -18,8 +18,10 @@ public class UserMapper {
         dto.setId(user.getId());
         dto.setEmail(user.getEmail());
         dto.setUsername(user.getUsername());
+        dto.setFullName(user.getFullName());
         dto.setRole(user.getRole());
         dto.setAvatarUrl(user.getAvatarUrl());
+        dto.setCoverImageUrl(user.getCoverImageUrl());
         dto.setBio(user.getBio());
         dto.setIsVerified(user.getIsVerified());
         dto.setCreatedAt(

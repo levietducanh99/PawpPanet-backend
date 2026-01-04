@@ -21,6 +21,9 @@ public class PostMediaEntity {
 
     private String type;  // image | video
 
+    @Column(name = "public_id", columnDefinition = "TEXT")
+    private String publicId;  // Cloudinary public_id for building URLs
+
     @Column(columnDefinition = "TEXT")
     private String url;
 
