@@ -2,6 +2,7 @@ package com.pawpplanet.backend.pet.service.impl;
 
 import com.pawpplanet.backend.encyclopedia.repository.BreedRepository;
 import com.pawpplanet.backend.encyclopedia.repository.SpeciesRepository;
+import com.pawpplanet.backend.media.service.CloudinaryUrlBuilder;
 import com.pawpplanet.backend.pet.dto.AddPetMediaRequest;
 import com.pawpplanet.backend.pet.dto.AddPetMediaResponse;
 import com.pawpplanet.backend.pet.dto.CreatePetRequestDTO;
@@ -36,19 +37,22 @@ public class PetServiceImpl implements PetService {
     private final BreedRepository breedRepository;
     private final PetMediaRepository petMediaRepository;
     private final FollowPetService followPetService;
+    private final CloudinaryUrlBuilder cloudinaryUrlBuilder;
 
     public PetServiceImpl(PetRepository petRepository,
                           UserRepository userRepository,
                           SpeciesRepository speciesRepository,
                           BreedRepository breedRepository,
                           PetMediaRepository petMediaRepository,
-                          FollowPetService followPetService) {
+                          FollowPetService followPetService,
+                          CloudinaryUrlBuilder cloudinaryUrlBuilder) {
         this.petRepository = petRepository;
         this.userRepository = userRepository;
         this.speciesRepository = speciesRepository;
         this.breedRepository = breedRepository;
         this.petMediaRepository = petMediaRepository;
         this.followPetService = followPetService;
+        this.cloudinaryUrlBuilder = cloudinaryUrlBuilder;
     }
 
     @Override
@@ -177,9 +181,9 @@ public class PetServiceImpl implements PetService {
 
         petRepository.save(pet);
 
-        // 5️⃣ Update avatar nếu có
-        if (request.getUrl() != null && !request.getUrl().isBlank()) {
-
+        // 5️⃣ Update avatar nếu có publicId
+        if (request.getAvatarPublicId() != null && !request.getAvatarPublicId().isBlank()) {
+            // Archive old avatar
             petMediaRepository
                     .findByPetIdAndDisplayOrder(petId, 1)
                     .ifPresent(old -> {
@@ -187,11 +191,18 @@ public class PetServiceImpl implements PetService {
                         petMediaRepository.save(old);
                     });
 
+            // Build URL and save
+            String avatarUrl = cloudinaryUrlBuilder.buildOptimizedUrl(
+                    request.getAvatarPublicId(),
+                    "image"
+            );
+
             PetMediaEntity newMedia = new PetMediaEntity();
             newMedia.setPetId(petId);
             newMedia.setType("image");
             newMedia.setRole("avatar");
-            newMedia.setUrl(request.getUrl());
+            newMedia.setPublicId(request.getAvatarPublicId());
+            newMedia.setUrl(avatarUrl);
             newMedia.setDisplayOrder(1);
 
             petMediaRepository.save(newMedia);
@@ -246,22 +257,7 @@ public class PetServiceImpl implements PetService {
             );
         }
 
-        // 4️⃣ Validate public IDs belong to correct folder
-        String expectedFolder = cloudinaryUrlBuilder.getExpectedPetGalleryFolder(petId);
-        for (AddPetMediaRequest.MediaItem item : request.getMediaItems()) {
-            if (!cloudinaryUrlBuilder.validatePublicId(item.getPublicId(), expectedFolder)) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        String.format(
-                                "Invalid public ID '%s'. Must be from Cloudinary folder: %s",
-                                item.getPublicId(),
-                                expectedFolder
-                        )
-                );
-            }
-        }
-
-        // 5️⃣ Get current max display order for gallery items
+        // 4️⃣ Get current max display order for gallery items
         List<PetMediaEntity> existingGalleryMedia = petMediaRepository.findByPetId(petId)
                 .stream()
                 .filter(m -> "gallery".equals(m.getRole()))
@@ -272,12 +268,12 @@ public class PetServiceImpl implements PetService {
                 .max()
                 .orElse(0);
 
-        // 6️⃣ Create and save new media entities
+        // 5️⃣ Create and save new media entities
         List<PetMediaEntity> newMediaEntities = new ArrayList<>();
         int currentDisplayOrder = maxDisplayOrder + 1;
 
         for (AddPetMediaRequest.MediaItem item : request.getMediaItems()) {
-            // Build URL from public ID with optimization
+            // Build URL from public ID with optimization (builder validates internally)
             String url = cloudinaryUrlBuilder.buildOptimizedUrl(
                     item.getPublicId(),
                     item.getType()
@@ -297,7 +293,7 @@ public class PetServiceImpl implements PetService {
         // Save all media entities
         List<PetMediaEntity> savedMedia = petMediaRepository.saveAll(newMediaEntities);
 
-        // 7️⃣ Build response
+        // 6️⃣ Build response
         List<PetMediaDTO> addedMediaDTOs = savedMedia.stream()
                 .map(PetMapper::toMediaDTO)
                 .toList();

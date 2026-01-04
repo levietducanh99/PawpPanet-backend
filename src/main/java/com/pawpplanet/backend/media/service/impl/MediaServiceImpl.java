@@ -160,6 +160,9 @@ public class MediaServiceImpl implements MediaService {
             case USER_AVATAR:
                 return String.format("pawplanet/users/%d/avatar", request.getOwnerId());
 
+            case USER_COVER:
+                return String.format("pawplanet/users/%d/cover", request.getOwnerId());
+
             case PET_AVATAR:
                 return String.format("pawplanet/pets/%d/avatar", request.getOwnerId());
 
@@ -193,8 +196,9 @@ public class MediaServiceImpl implements MediaService {
 
         switch (context) {
             case USER_AVATAR:
+            case USER_COVER:
             case PET_AVATAR:
-                // For avatars, use fixed name so uploads replace the old avatar
+                // For avatars and covers, use fixed name so uploads replace the old one
                 return "avatar";
 
             case ENCYCLOPEDIA_CLASS:

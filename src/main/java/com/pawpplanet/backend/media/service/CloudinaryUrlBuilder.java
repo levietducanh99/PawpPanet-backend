@@ -128,5 +128,25 @@ public class CloudinaryUrlBuilder {
     public String getExpectedPetAvatarFolder(Long petId) {
         return String.format("pawplanet/pets/%d/avatar", petId);
     }
+
+    /**
+     * Get expected folder for user avatar
+     *
+     * @param userId User ID
+     * @return Expected folder path
+     */
+    public String getExpectedUserAvatarFolder(Long userId) {
+        return String.format("pawplanet/users/%d/avatar", userId);
+    }
+
+    /**
+     * Get expected folder for user cover image
+     *
+     * @param userId User ID
+     * @return Expected folder path
+     */
+    public String getExpectedUserCoverFolder(Long userId) {
+        return String.format("pawplanet/users/%d/cover", userId);
+    }
 }
 

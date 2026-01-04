@@ -18,11 +18,24 @@ CREATE INDEX IF NOT EXISTS idx_post_media_public_id ON social.post_media(public_
 
 COMMENT ON COLUMN social.post_media.public_id IS 'Cloudinary public ID for post media';
 
--- 3. User Avatar (store public_id separately for user avatars)
+-- 3. User Avatar & Cover Image (store public_id separately for user media)
 ALTER TABLE auth.users
 ADD COLUMN IF NOT EXISTS avatar_public_id TEXT;
 
+ALTER TABLE auth.users
+ADD COLUMN IF NOT EXISTS cover_image_public_id TEXT;
+
+ALTER TABLE auth.users
+ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);
+
+ALTER TABLE auth.users
+ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_users_avatar_public_id ON auth.users(avatar_public_id);
+CREATE INDEX IF NOT EXISTS idx_users_full_name ON auth.users(full_name);
 
 COMMENT ON COLUMN auth.users.avatar_public_id IS 'Cloudinary public ID for user avatar (avatar_url will be built from this)';
+COMMENT ON COLUMN auth.users.cover_image_public_id IS 'Cloudinary public ID for user cover image';
+COMMENT ON COLUMN auth.users.full_name IS 'Tên đầy đủ của người dùng';
+COMMENT ON COLUMN auth.users.cover_image_url IS 'URL ảnh bìa profile (built from cover_image_public_id)';
 

@@ -13,6 +13,13 @@ public enum UploadContext {
     USER_AVATAR,
 
     /**
+     * User cover image (banner/background)
+     * Folder: pawplanet/users/{userId}/cover
+     * Requires: ownerId (userId)
+     */
+    USER_COVER,
+
+    /**
      * Pet avatar image
      * Folder: pawplanet/pets/{petId}/avatar
      * Requires: ownerId (interpreted as petId)
