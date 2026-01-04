@@ -1,9 +1,12 @@
 package com.pawpplanet.backend.pet.controller;
 
+import com.pawpplanet.backend.pet.dto.AddPetMediaRequest;
+import com.pawpplanet.backend.pet.dto.AddPetMediaResponse;
 import com.pawpplanet.backend.pet.dto.CreatePetRequestDTO;
 import com.pawpplanet.backend.pet.dto.PetProfileDTO;
 import com.pawpplanet.backend.pet.dto.UpdatePetRequestDTO;
 import com.pawpplanet.backend.pet.service.PetService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,5 +37,21 @@ public class PetController {
             @RequestBody UpdatePetRequestDTO request
     ) {
         return ResponseEntity.ok(petService.updatePet(id, request));
+    }
+
+    /**
+     * Add photos/videos to pet gallery
+     * Called after frontend has successfully uploaded to Cloudinary
+     *
+     * @param id The pet ID
+     * @param request Request containing media URLs from Cloudinary
+     * @return Response with added media details
+     */
+    @PostMapping("/{id}/gallery")
+    public ResponseEntity<AddPetMediaResponse> addMediaToGallery(
+            @PathVariable Long id,
+            @Valid @RequestBody AddPetMediaRequest request
+    ) {
+        return ResponseEntity.ok(petService.addMediaToGallery(id, request));
     }
 }

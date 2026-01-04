@@ -2,7 +2,10 @@ package com.pawpplanet.backend.pet.service.impl;
 
 import com.pawpplanet.backend.encyclopedia.repository.BreedRepository;
 import com.pawpplanet.backend.encyclopedia.repository.SpeciesRepository;
+import com.pawpplanet.backend.pet.dto.AddPetMediaRequest;
+import com.pawpplanet.backend.pet.dto.AddPetMediaResponse;
 import com.pawpplanet.backend.pet.dto.CreatePetRequestDTO;
+import com.pawpplanet.backend.pet.dto.PetMediaDTO;
 import com.pawpplanet.backend.pet.dto.PetProfileDTO;
 import com.pawpplanet.backend.pet.dto.UpdatePetRequestDTO;
 import com.pawpplanet.backend.pet.entity.PetEntity;
@@ -20,9 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @Transactional
@@ -201,6 +203,117 @@ public class PetServiceImpl implements PetService {
 
         PetProfileDTO dto = PetMapper.toProfileDTO(pet, mediaList);
         return enrichPetDTO(dto, pet);
+    }
+
+    @Override
+    public AddPetMediaResponse addMediaToGallery(Long petId, AddPetMediaRequest request) {
+        // 1️⃣ Validate pet exists
+        PetEntity pet = petRepository.findById(petId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Pet not found"
+                        )
+                );
+
+        // 2️⃣ Verify ownership
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Long currentUserId = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED,
+                                "User not found"
+                        )
+                )
+                .getId();
+
+        if (!pet.getOwnerId().equals(currentUserId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You are not allowed to add media to this pet"
+            );
+        }
+
+        // 3️⃣ Validate request
+        if (request.getMediaItems() == null || request.getMediaItems().isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Media items cannot be empty"
+            );
+        }
+
+        // 4️⃣ Validate public IDs belong to correct folder
+        String expectedFolder = cloudinaryUrlBuilder.getExpectedPetGalleryFolder(petId);
+        for (AddPetMediaRequest.MediaItem item : request.getMediaItems()) {
+            if (!cloudinaryUrlBuilder.validatePublicId(item.getPublicId(), expectedFolder)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        String.format(
+                                "Invalid public ID '%s'. Must be from Cloudinary folder: %s",
+                                item.getPublicId(),
+                                expectedFolder
+                        )
+                );
+            }
+        }
+
+        // 5️⃣ Get current max display order for gallery items
+        List<PetMediaEntity> existingGalleryMedia = petMediaRepository.findByPetId(petId)
+                .stream()
+                .filter(m -> "gallery".equals(m.getRole()))
+                .toList();
+
+        int maxDisplayOrder = existingGalleryMedia.stream()
+                .mapToInt(PetMediaEntity::getDisplayOrder)
+                .max()
+                .orElse(0);
+
+        // 6️⃣ Create and save new media entities
+        List<PetMediaEntity> newMediaEntities = new ArrayList<>();
+        int currentDisplayOrder = maxDisplayOrder + 1;
+
+        for (AddPetMediaRequest.MediaItem item : request.getMediaItems()) {
+            // Build URL from public ID with optimization
+            String url = cloudinaryUrlBuilder.buildOptimizedUrl(
+                    item.getPublicId(),
+                    item.getType()
+            );
+
+            PetMediaEntity mediaEntity = new PetMediaEntity();
+            mediaEntity.setPetId(petId);
+            mediaEntity.setType(item.getType());
+            mediaEntity.setRole("gallery");
+            mediaEntity.setPublicId(item.getPublicId());
+            mediaEntity.setUrl(url);
+            mediaEntity.setDisplayOrder(currentDisplayOrder++);
+
+            newMediaEntities.add(mediaEntity);
+        }
+
+        // Save all media entities
+        List<PetMediaEntity> savedMedia = petMediaRepository.saveAll(newMediaEntities);
+
+        // 7️⃣ Build response
+        List<PetMediaDTO> addedMediaDTOs = savedMedia.stream()
+                .map(PetMapper::toMediaDTO)
+                .toList();
+
+        // Get total gallery count
+        int totalGalleryCount = (int) petMediaRepository.findByPetId(petId)
+                .stream()
+                .filter(m -> "gallery".equals(m.getRole()))
+                .count();
+
+        return AddPetMediaResponse.builder()
+                .petId(petId)
+                .addedMedia(addedMediaDTOs)
+                .totalGalleryCount(totalGalleryCount)
+                .message("Successfully added " + savedMedia.size() + " media item(s) to gallery")
+                .build();
     }
 
 

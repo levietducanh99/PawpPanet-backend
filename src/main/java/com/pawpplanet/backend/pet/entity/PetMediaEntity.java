@@ -23,6 +23,9 @@ public class PetMediaEntity {
 
     private String role;  // avatar | gallery
 
+    @Column(name = "public_id", columnDefinition = "TEXT")
+    private String publicId;  // Cloudinary public_id for building URLs
+
     @Column(columnDefinition = "TEXT")
     private String url;
 

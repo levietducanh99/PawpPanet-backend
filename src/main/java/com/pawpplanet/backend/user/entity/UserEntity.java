@@ -28,6 +28,9 @@ public class UserEntity {
 
     private String role;
 
+    @Column(name = "avatar_public_id", columnDefinition = "TEXT")
+    private String avatarPublicId;  // Cloudinary public_id for avatar
+
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
