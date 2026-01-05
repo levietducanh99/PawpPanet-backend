@@ -17,6 +17,8 @@ import com.pawpplanet.backend.post.repository.*;
 import com.pawpplanet.backend.post.service.PostService;
 import com.pawpplanet.backend.user.entity.UserEntity;
 import com.pawpplanet.backend.user.repository.UserRepository;
+import com.pawpplanet.backend.utils.SecurityHelper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ import java.util.List;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class PostServiceImpl implements PostService {
 
     private final PostRepository postRepository;
@@ -40,37 +43,15 @@ public class PostServiceImpl implements PostService {
     private final BreedRepository breedRepository;
     private final PetRepository petRepository;
     private final PetMediaRepository petMediaRepository;
+    private final SecurityHelper securityHelper;
 
 
-    public PostServiceImpl(
-            PostRepository postRepository,
-            UserRepository userRepository,
-            PostMediaRepository postMediaRepository,
-            PostPetRepository postPetRepository,
-            LikeRepository likeRepository,
-            CommentRepository commentRepository,
-            SpeciesRepository speciesRepository,
-            BreedRepository breedRepository,
-            PetRepository petRepository,
-            PetMediaRepository petMediaRepository
-    ) {
-        this.postRepository = postRepository;
-        this.userRepository = userRepository;
-        this.postMediaRepository = postMediaRepository;
-        this.postPetRepository = postPetRepository;
-        this.likeRepository = likeRepository;
-        this.commentRepository = commentRepository;
-        this.speciesRepository = speciesRepository;
-        this.breedRepository = breedRepository;
-        this.petRepository = petRepository;
-        this.petMediaRepository = petMediaRepository;
-    }
 
     // ================= CREATE =================
     @Override
     public PostResponse createPost(CreatePostRequest request) {
 
-        UserEntity user = getCurrentUser();
+        UserEntity user = securityHelper.getCurrentUser();
 
         PostEntity post = new PostEntity();
         post.setAuthorId(user.getId());
@@ -92,7 +73,7 @@ public class PostServiceImpl implements PostService {
     @Override
     public PostResponse updatePost(Long postId, UpdatePostRequest request) {
 
-        UserEntity user = getCurrentUser();
+        UserEntity user = securityHelper.getCurrentUser();
 
         PostEntity post = postRepository.findById(postId)
                 .orElseThrow(() ->
@@ -135,7 +116,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public List<PostResponse> getMyPosts() {
-        UserEntity currentUser = getCurrentUser();
+        UserEntity currentUser = securityHelper.getCurrentUser();
 
         return getPostsByUserId(currentUser.getId());
     }
@@ -145,11 +126,23 @@ public class PostServiceImpl implements PostService {
     public List<PostResponse> getPostsByPetId(Long petId) {
         List<PostEntity> posts = postRepository.findAllByPetId(petId);
 
-        UserEntity currentUser = getCurrentUser();
+        UserEntity currentUser = securityHelper.getCurrentUser();
 
         return posts.stream()
                 .map(post -> buildPostResponse(post, currentUser))
                 .toList();
+    }
+    // Thêm vào trong PostServiceImpl.java
+
+    @Override
+    @Transactional(readOnly = true)
+    public PostResponse getPostById(Long id) {
+        PostEntity post = postRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bài viết"));
+
+        UserEntity currentUser = securityHelper.getCurrentUser();
+
+        return buildPostResponse(post, currentUser);
     }
 
     // ================= BUILD RESPONSE =================
@@ -254,21 +247,4 @@ public class PostServiceImpl implements PostService {
         postPetRepository.saveAll(postPets);
     }
 
-    private UserEntity getCurrentUser() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Chưa đăng nhập"
-            );
-        }
-
-        return userRepository.findByEmail(auth.getName())
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Không tìm thấy user"
-                        ));
-    }
 }

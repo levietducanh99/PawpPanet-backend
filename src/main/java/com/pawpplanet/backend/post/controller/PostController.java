@@ -21,7 +21,7 @@ public class PostController {
 
     @PostMapping
     public ResponseEntity<PostResponse> createPost(
-            @RequestBody CreatePostRequest request
+            @RequestBody CreatePostRequest request 
     ) {
         return ResponseEntity.ok(postService.createPost(request));
     }
@@ -33,7 +33,10 @@ public class PostController {
     ) {
         return ResponseEntity.ok(postService.updatePost(id, request));
     }
-
+    @GetMapping("/{id}")
+    public ResponseEntity<PostResponse> getPostById(@PathVariable Long id) {
+        return ResponseEntity.ok(postService.getPostById(id));
+    }
 
     @GetMapping
     public ResponseEntity<List<PostResponse>> getMyPosts() {

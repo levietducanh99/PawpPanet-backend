@@ -17,4 +17,6 @@ public interface PostService {
     List<PostResponse> getMyPosts();
 
     List<PostResponse> getPostsByPetId(Long petId);
+
+    PostResponse getPostById(Long id);
 }
