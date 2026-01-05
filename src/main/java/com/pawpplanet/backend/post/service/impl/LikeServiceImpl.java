@@ -1,5 +1,7 @@
 package com.pawpplanet.backend.post.service.impl;
 
+import com.pawpplanet.backend.notification.enums.NotificationType;
+import com.pawpplanet.backend.notification.enums.TargetType;
 import com.pawpplanet.backend.notification.service.NotificationService;
 import com.pawpplanet.backend.post.dto.LikeRequest;
 import com.pawpplanet.backend.post.dto.LikeResponse;
@@ -9,7 +11,7 @@ import com.pawpplanet.backend.post.repository.LikeRepository;
 import com.pawpplanet.backend.post.repository.PostRepository;
 import com.pawpplanet.backend.post.service.LikeService;
 import com.pawpplanet.backend.user.entity.UserEntity;
-import com.pawpplanet.backend.user.service.UserService;
+import com.pawpplanet.backend.user.repository.UserRepository;
 import com.pawpplanet.backend.utils.SecurityHelper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +32,7 @@ public class LikeServiceImpl implements LikeService {
     private final PostRepository postRepository;
     private final NotificationService notificationService;
     private final SecurityHelper securityHelper;
+    private final UserRepository userRepository;
 
     @Override
     public LikeResponse toggleLike(LikeRequest request) {
@@ -57,9 +61,25 @@ public class LikeServiceImpl implements LikeService {
             ));
             liked = true;
 
+            // Send notification to post author
             if (!post.getAuthorId().equals(userId)) {
+                // Add post preview to metadata
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("postId", post.getId());
+                if (post.getContent() != null && !post.getContent().isEmpty()) {
+                    String preview = post.getContent().length() > 50
+                            ? post.getContent().substring(0, 50) + "..."
+                            : post.getContent();
+                    metadata.put("postPreview", preview);
+                }
+
                 notificationService.createNotification(
-                        post.getAuthorId(), "LIKE", post.getId()
+                        post.getAuthorId(),      // recipient
+                        userId,                   // actor (current user who liked)
+                        NotificationType.LIKE_POST,
+                        TargetType.POST,
+                        post.getId(),
+                        metadata
                 );
             }
         }
