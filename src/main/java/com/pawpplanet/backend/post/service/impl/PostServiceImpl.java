@@ -150,21 +150,17 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public List<PostResponse> getNewsFeed() {
-        // 1. Lấy user hiện tại
         UserEntity currentUser = securityHelper.getCurrentUser();
 
-        // 2. Lấy danh sách ID của những người mà user này follow
         List<Long> followingIds = followUserRepository.findFollowingIdsByFollowerId(currentUser.getId());
 
-        // Nếu không follow ai, có thể trả về list rỗng hoặc gợi ý bài viết chung
         if (followingIds.isEmpty()) {
             return new ArrayList<>();
         }
 
-        // 3. Lấy các bài viết của những người đó, sắp xếp mới nhất lên đầu
+
         List<PostEntity> posts = postRepository.findByAuthorIdInOrderByCreatedAtDesc(followingIds);
 
-        // 4. Chuyển đổi sang PostResponse
         return posts.stream()
                 .map(post -> buildPostResponse(post, currentUser))
                 .toList();
