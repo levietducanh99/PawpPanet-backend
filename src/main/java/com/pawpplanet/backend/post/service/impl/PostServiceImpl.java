@@ -1,5 +1,10 @@
 package com.pawpplanet.backend.post.service.impl;
 
+import com.pawpplanet.backend.encyclopedia.repository.BreedRepository;
+import com.pawpplanet.backend.encyclopedia.repository.SpeciesRepository;
+import com.pawpplanet.backend.pet.entity.PetEntity;
+import com.pawpplanet.backend.pet.repository.PetMediaRepository;
+import com.pawpplanet.backend.pet.repository.PetRepository;
 import com.pawpplanet.backend.post.dto.CreatePostRequest;
 import com.pawpplanet.backend.post.dto.MediaUrlRequest;
 import com.pawpplanet.backend.post.dto.PostResponse;
@@ -31,6 +36,11 @@ public class PostServiceImpl implements PostService {
     private final PostPetRepository postPetRepository;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
+    private final SpeciesRepository speciesRepository;
+    private final BreedRepository breedRepository;
+    private final PetRepository petRepository;
+    private final PetMediaRepository petMediaRepository;
+
 
     public PostServiceImpl(
             PostRepository postRepository,
@@ -38,7 +48,11 @@ public class PostServiceImpl implements PostService {
             PostMediaRepository postMediaRepository,
             PostPetRepository postPetRepository,
             LikeRepository likeRepository,
-            CommentRepository commentRepository
+            CommentRepository commentRepository,
+            SpeciesRepository speciesRepository,
+            BreedRepository breedRepository,
+            PetRepository petRepository,
+            PetMediaRepository petMediaRepository
     ) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
@@ -46,6 +60,10 @@ public class PostServiceImpl implements PostService {
         this.postPetRepository = postPetRepository;
         this.likeRepository = likeRepository;
         this.commentRepository = commentRepository;
+        this.speciesRepository = speciesRepository;
+        this.breedRepository = breedRepository;
+        this.petRepository = petRepository;
+        this.petMediaRepository = petMediaRepository;
     }
 
     // ================= CREATE =================
@@ -109,8 +127,11 @@ public class PostServiceImpl implements PostService {
 
         List<PostEntity> posts = postRepository.findByAuthorIdOrderByCreatedAtDesc(userId);
 
+        // Use getCurrentUserOrNull to get the viewer (who is viewing, not the author)
+        UserEntity viewer = getCurrentUserOrNull();
+
         return posts.stream()
-                .map(post -> buildPostResponse(post, author))
+                .map(post -> buildPostResponse(post, viewer))
                 .toList();
     }
 
@@ -127,7 +148,7 @@ public class PostServiceImpl implements PostService {
     public List<PostResponse> getPostsByPetId(Long petId) {
         List<PostEntity> posts = postRepository.findAllByPetId(petId);
 
-        UserEntity currentUser = getCurrentUser();
+        UserEntity currentUser = getCurrentUserOrNull();
 
         return posts.stream()
                 .map(post -> buildPostResponse(post, currentUser))
@@ -136,6 +157,10 @@ public class PostServiceImpl implements PostService {
 
     // ================= BUILD RESPONSE =================
     private PostResponse buildPostResponse(PostEntity post, UserEntity viewer) {
+
+        if (post.getAuthorId() == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Post không có author");
+        }
 
         UserEntity author = userRepository.findById(post.getAuthorId())
                 .orElseThrow(() ->
@@ -147,6 +172,40 @@ public class PostServiceImpl implements PostService {
         List<PostPetEntity> pets =
                 postPetRepository.findByPostId(post.getId());
 
+        List<PostResponse.PostPetDTO> petDtos = pets.stream().map(link -> {
+            PetEntity pet = petRepository.findById(link.getPetId()).orElse(null);
+            PostResponse.PostPetDTO dto = new PostResponse.PostPetDTO();
+
+            if (pet != null) {
+                dto.setId(pet.getId());
+                dto.setName(pet.getName());
+                dto.setOwnerId(pet.getOwnerId());
+
+                if (pet.getSpeciesId() != null) {
+                    speciesRepository.findById(pet.getSpeciesId())
+                            .ifPresent(s -> dto.setSpeciesName(s.getName()));
+                }
+
+                if (pet.getBreedId() != null) {
+                    breedRepository.findById(pet.getBreedId())
+                            .ifPresent(b -> dto.setBreedName(b.getName()));
+                }
+
+                if (pet.getOwnerId() != null) {
+                    userRepository.findById(pet.getOwnerId())
+                            .ifPresent(u -> dto.setOwnerUsername(u.getUsername()));
+                }
+
+                petMediaRepository.findByPetId(pet.getId()).stream()
+                        .filter(m -> "avatar".equals(m.getRole()))
+                        .findFirst()
+                        .ifPresent(m -> dto.setAvatarUrl(m.getUrl()));
+
+
+            }
+            return dto;
+        }).toList();
+
         int likeCount =
                 likeRepository.countByPostId(post.getId());
 
@@ -154,7 +213,7 @@ public class PostServiceImpl implements PostService {
                 commentRepository.countByPostIdAndDeletedAtIsNull(post.getId());
 
         boolean liked = false;
-        if (viewer != null) {
+        if (viewer != null && viewer.getId() != null) {
             liked = likeRepository.existsByPostIdAndUserId(
                     post.getId(),
                     viewer.getId()
@@ -165,7 +224,7 @@ public class PostServiceImpl implements PostService {
                 post,
                 author,
                 media,
-                pets,
+                petDtos,
                 likeCount,
                 commentCount,
                 liked
@@ -220,5 +279,15 @@ public class PostServiceImpl implements PostService {
                                 HttpStatus.NOT_FOUND,
                                 "Không tìm thấy user"
                         ));
+    }
+
+    private UserEntity getCurrentUserOrNull() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            return null;
+        }
+
+        return userRepository.findByEmail(auth.getName()).orElse(null);
     }
 }
