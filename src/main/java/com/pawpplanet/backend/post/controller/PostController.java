@@ -56,4 +56,9 @@ public class PostController {
     ) {
         return ResponseEntity.ok(postService.getPostsByPetId(petId));
     }
+
+    @GetMapping("/feed")
+    public ResponseEntity<List<PostResponse>> getNewsFeed() {
+        return ResponseEntity.ok(postService.getNewsFeed());
+    }
 }

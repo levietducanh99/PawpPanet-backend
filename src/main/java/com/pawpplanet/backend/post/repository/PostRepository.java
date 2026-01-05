@@ -14,4 +14,7 @@ public interface PostRepository extends JpaRepository<PostEntity, Long> {
     List<PostEntity> findAllByPetId(@Param("petId") Long petId);
 
     List<PostEntity> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
+
+    // Thêm phương thức này vào PostRepository
+    List<PostEntity> findByAuthorIdInOrderByCreatedAtDesc(List<Long> authorIds);
 }

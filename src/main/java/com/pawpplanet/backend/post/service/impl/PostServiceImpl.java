@@ -16,6 +16,7 @@ import com.pawpplanet.backend.post.mapper.PostMapper;
 import com.pawpplanet.backend.post.repository.*;
 import com.pawpplanet.backend.post.service.PostService;
 import com.pawpplanet.backend.user.entity.UserEntity;
+import com.pawpplanet.backend.user.repository.FollowUserRepository;
 import com.pawpplanet.backend.user.repository.UserRepository;
 import com.pawpplanet.backend.utils.SecurityHelper;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class PostServiceImpl implements PostService {
     private final PetRepository petRepository;
     private final PetMediaRepository petMediaRepository;
     private final SecurityHelper securityHelper;
+    private final FollowUserRepository followUserRepository;
 
 
 
@@ -145,6 +147,29 @@ public class PostServiceImpl implements PostService {
         return buildPostResponse(post, currentUser);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<PostResponse> getNewsFeed() {
+        // 1. Lấy user hiện tại
+        UserEntity currentUser = securityHelper.getCurrentUser();
+
+        // 2. Lấy danh sách ID của những người mà user này follow
+        List<Long> followingIds = followUserRepository.findFollowingIdsByFollowerId(currentUser.getId());
+
+        // Nếu không follow ai, có thể trả về list rỗng hoặc gợi ý bài viết chung
+        if (followingIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 3. Lấy các bài viết của những người đó, sắp xếp mới nhất lên đầu
+        List<PostEntity> posts = postRepository.findByAuthorIdInOrderByCreatedAtDesc(followingIds);
+
+        // 4. Chuyển đổi sang PostResponse
+        return posts.stream()
+                .map(post -> buildPostResponse(post, currentUser))
+                .toList();
+    }
+
     // ================= BUILD RESPONSE =================
     private PostResponse buildPostResponse(PostEntity post, UserEntity viewer) {
 
@@ -214,6 +239,7 @@ public class PostServiceImpl implements PostService {
                 liked
         );
     }
+
 
 
     // ================= HELPER =================
