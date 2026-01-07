@@ -65,8 +65,8 @@ public class MediaServiceImpl implements MediaService {
         // Validate request
         validateRequest(request);
 
-        // Authorize pet ownership for PET contexts
-        if (isPetContext(request.getContext())) {
+        // Authorize pet ownership for PET_GALLERY only (not PET_AVATAR when creating new pet)
+        if (request.getContext() == UploadContext.PET_GALLERY && request.getOwnerId() != null) {
             verifyPetOwnership(request.getOwnerId());
         }
 
@@ -164,7 +164,9 @@ public class MediaServiceImpl implements MediaService {
                 return String.format("pawplanet/users/%d/cover", request.getOwnerId());
 
             case PET_AVATAR:
-                return String.format("pawplanet/pets/%d/avatar", request.getOwnerId());
+                // Khi tạo pet mới, chưa có petId → dùng folder chung
+                // Sau khi tạo pet, có thể move ảnh vào folder riêng hoặc giữ nguyên
+                return "pawplanet/pets/avatars";
 
             case PET_GALLERY:
                 return String.format("pawplanet/pets/%d/gallery", request.getOwnerId());
@@ -232,7 +234,8 @@ public class MediaServiceImpl implements MediaService {
      */
     private boolean requiresOwnerId(UploadContext context) {
         return context == UploadContext.USER_AVATAR ||
-                context == UploadContext.PET_AVATAR ||
+                // PET_AVATAR không cần ownerId khi tạo mới pet (sign trước, tạo pet sau)
+                // context == UploadContext.PET_AVATAR ||
                 context == UploadContext.PET_GALLERY ||
                 context == UploadContext.POST_MEDIA;
     }
@@ -246,13 +249,6 @@ public class MediaServiceImpl implements MediaService {
                 context == UploadContext.ENCYCLOPEDIA_BREED;
     }
 
-    /**
-     * Check if context is PET-related
-     */
-    private boolean isPetContext(UploadContext context) {
-        return context == UploadContext.PET_AVATAR ||
-                context == UploadContext.PET_GALLERY;
-    }
 
     /**
      * Verify that the current authenticated user owns the pet
