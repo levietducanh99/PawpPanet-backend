@@ -25,7 +25,8 @@ public class CreatePetRequestDTO {
     // owned | for_adoption
     private String status;
 
-    private String url;
+    // Cloudinary public_id for avatar (optional when creating pet)
+    private String avatarPublicId;
 
     private BigDecimal weight;
 

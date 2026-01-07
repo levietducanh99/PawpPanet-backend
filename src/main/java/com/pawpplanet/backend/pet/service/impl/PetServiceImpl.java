@@ -90,16 +90,38 @@ public class PetServiceImpl implements PetService {
 
         petRepository.save(pet);
 
-        PetMediaEntity media = new PetMediaEntity();
-        media.setPetId(pet.getId());
-        media.setType("image");
-        media.setRole("avatar");
-        media.setUrl("https://res.cloudinary.com/demo/image/upload/v1700000000/default_pet.jpg");
-        media.setDisplayOrder(1);
-        petMediaRepository.save(media);
+        // Xử lý avatar nếu có avatarPublicId
+        if (request.getAvatarPublicId() != null && !request.getAvatarPublicId().isBlank()) {
+            // Build URL từ publicId
+            String avatarUrl = cloudinaryUrlBuilder.buildOptimizedUrl(
+                    request.getAvatarPublicId(),
+                    "image"
+            );
+
+            PetMediaEntity media = new PetMediaEntity();
+            media.setPetId(pet.getId());
+            media.setType("image");
+            media.setRole("avatar");
+            media.setPublicId(request.getAvatarPublicId());
+            media.setUrl(avatarUrl);
+            media.setDisplayOrder(1);
+            petMediaRepository.save(media);
+        } else {
+            // Không có avatar → dùng default hoặc không tạo media
+            PetMediaEntity media = new PetMediaEntity();
+            media.setPetId(pet.getId());
+            media.setType("image");
+            media.setRole("avatar");
+            media.setUrl("https://res.cloudinary.com/demo/image/upload/v1700000000/default_pet.jpg");
+            media.setDisplayOrder(1);
+            petMediaRepository.save(media);
+        }
+
+        // Lấy media để trả về
+        List<PetMediaEntity> mediaList = petMediaRepository.findByPetId(pet.getId());
 
         // Chỉ thêm phần này
-        PetProfileDTO dto = PetMapper.toProfileDTO(pet, List.of(media));
+        PetProfileDTO dto = PetMapper.toProfileDTO(pet, mediaList);
         return enrichPetDTO(dto, pet);
     }
 
