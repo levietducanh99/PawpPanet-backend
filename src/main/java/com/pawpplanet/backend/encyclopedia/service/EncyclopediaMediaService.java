@@ -33,13 +33,13 @@ public class EncyclopediaMediaService {
     private final AnimalClassRepository animalClassRepository;
 
     private static final List<String> VALID_MEDIA_TYPES = Arrays.asList("image", "video");
-    private static final List<String> VALID_MEDIA_ROLES = Arrays.asList("hero", "gallery", "thumbnail");
+    private static final List<String> VALID_MEDIA_ROLES = Arrays.asList("hero", "gallery", "avatar");
 
     /**
-     * Lấy thumbnail (avatar) cho entity
+     * Lấy avatar URL cho entity (được sử dụng như thumbnail trong danh sách)
      */
     public String getThumbnailUrl(String entityType, Long entityId) {
-        return mediaRepository.findFirstByEntityTypeAndEntityIdAndRole(entityType, entityId, "thumbnail")
+        return mediaRepository.findFirstByEntityTypeAndEntityIdAndRole(entityType, entityId, "avatar")
                 .map(EncyclopediaMediaEntity::getUrl)
                 .orElse(null);
     }
@@ -160,7 +160,7 @@ public class EncyclopediaMediaService {
                 displayOrder++;
                 entity.setDisplayOrder(displayOrder);
             } else {
-                // For hero and thumbnail, use 0 or don't set display order
+                // For hero and avatar, use 0 or don't set display order
                 entity.setDisplayOrder(0);
             }
 
