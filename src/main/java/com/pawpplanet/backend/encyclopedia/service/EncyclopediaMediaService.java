@@ -36,7 +36,7 @@ public class EncyclopediaMediaService {
     private static final List<String> VALID_MEDIA_ROLES = Arrays.asList("hero", "gallery", "avatar");
 
     /**
-     * Lấy thumbnail (avatar) cho entity
+     * Lấy avatar URL cho entity (được sử dụng như thumbnail trong danh sách)
      */
     public String getThumbnailUrl(String entityType, Long entityId) {
         return mediaRepository.findFirstByEntityTypeAndEntityIdAndRole(entityType, entityId, "avatar")
