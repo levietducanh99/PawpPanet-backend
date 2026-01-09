@@ -68,6 +68,27 @@ public class CommentServiceImpl implements CommentService {
         res.setCreatedAt(entity.getCreatedAt());
         return res;
     }
+
+    @Override
+    public void deleteComment(Long commentId) {
+        UserEntity currentUser = securityHelper.getCurrentUser();
+
+        CommentEntity comment = commentRepository.findById(commentId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found")
+                );
+
+        if (!comment.getUserId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền xóa comment này");
+        }
+
+        comment.setIsDeleted(true);
+        comment.setDeletedAt(java.time.LocalDateTime.now());
+        comment.setDeletedBy(currentUser.getId());
+
+        commentRepository.save(comment);
+    }
+
     @Override
     public List<CommentDetailResponse> getCommentsByPostId(Long postId) {
 

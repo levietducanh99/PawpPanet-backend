@@ -341,6 +341,32 @@ public class PetServiceImpl implements PetService {
 
     }
 
+    @Override
+    public void deletePet(Long petId) {
+        PetEntity pet = petRepository.findById(petId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Pet not found"
+                        )
+                );
+
+        Long currentUserId = securityHelper.getCurrentUserId();
+
+        if (!pet.getOwnerId().equals(currentUserId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You are not allowed to delete this pet"
+            );
+        }
+
+        pet.setIsDeleted(true);
+        pet.setDeletedAt(java.time.LocalDateTime.now());
+        pet.setDeletedBy(currentUserId);
+
+        petRepository.save(pet);
+    }
+
 
 
     // HÀM MỚI THÊM VÀO

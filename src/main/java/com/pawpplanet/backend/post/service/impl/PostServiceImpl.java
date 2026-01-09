@@ -100,6 +100,27 @@ public class PostServiceImpl implements PostService {
 
         return buildPostResponse(postRepository.save(post), user);
     }
+
+    // ================= DELETE =================
+    @Override
+    public void deletePost(Long postId) {
+        UserEntity user = securityHelper.getCurrentUser();
+
+        PostEntity post = postRepository.findById(postId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bài viết"));
+
+        if (!post.getAuthorId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền xóa");
+        }
+
+        post.setIsDeleted(true);
+        post.setDeletedAt(java.time.LocalDateTime.now());
+        post.setDeletedBy(user.getId());
+
+        postRepository.save(post);
+    }
+
     // ================= READ =================
 
     @Override
@@ -226,7 +247,7 @@ public class PostServiceImpl implements PostService {
                 likeRepository.countByPostId(post.getId());
 
         int commentCount =
-                commentRepository.countByPostIdAndDeletedAtIsNull(post.getId());
+                commentRepository.countByPostId(post.getId());
 
         boolean liked = false;
         if (viewer != null && viewer.getId() != null) {
