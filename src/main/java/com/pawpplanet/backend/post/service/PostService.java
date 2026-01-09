@@ -24,6 +24,4 @@ public interface PostService {
 
     List<PostResponse> getNewsFeed();
 
-    List<PostResponse> getExploreFeed();
-
 }

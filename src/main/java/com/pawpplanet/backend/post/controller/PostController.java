@@ -70,8 +70,4 @@ public class PostController {
     }
 
 
-    @GetMapping("explore")
-    public ResponseEntity<List<PostResponse>> getExploreFeed() {
-        return ResponseEntity.ok(postService.getExploreFeed());
-    }
 }
