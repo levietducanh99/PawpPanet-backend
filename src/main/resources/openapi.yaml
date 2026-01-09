@@ -22,6 +22,10 @@
   ],
   "tags": [
     {
+      "name": "Explore",
+      "description": "APIs for discovering random posts, pets, and users"
+    },
+    {
       "name": "Notifications",
       "description": "API quản lý thông báo"
     },
@@ -1419,6 +1423,40 @@
         }
       }
     },
+    "/api/v1/pets/my-pets/{id}": {
+      "get": {
+        "tags": [
+          "pet-controller"
+        ],
+        "operationId": "getAllUserPets",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AllPetsResponseDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "tags": [
@@ -1617,6 +1655,58 @@
                   "additionalProperties": {
                     "type": "object"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/explore": {
+      "get": {
+        "tags": [
+          "Explore"
+        ],
+        "summary": "Get explore feed",
+        "description": "Returns a randomized mix of public posts, pets, and users for discovery. Authentication is optional - logged-in users won't see their own content. Use the returned seed for consistent pagination.",
+        "operationId": "getExploreFeed",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Total number of items to return (default: 30, max: 50)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "seed",
+            "in": "query",
+            "description": "Seed for consistent random ordering (for pagination)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "description": "Comma-separated list of entity types to include: post,pet,user (default: all)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExploreResponse"
                 }
               }
             }
@@ -3556,6 +3646,31 @@
           },
           "userAvatar": {
             "type": "string"
+          }
+        }
+      },
+      "ExploreItemDTO": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "ExploreResponse": {
+        "type": "object",
+        "properties": {
+          "seed": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExploreItemDTO"
+            }
           }
         }
       },
