@@ -209,6 +209,25 @@ public class PostServiceImpl implements PostService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<PostResponse> getUrgentPosts() {
+        List<PostEntity> posts = postRepository.findByTypeOrderByCreatedAtDesc("urgent");
+
+        Long viewerId = securityHelper.getCurrentUserIdOrNull();
+        UserEntity viewer = viewerId != null ? userRepository.findById(viewerId).orElse(null) : null;
+
+        return posts.stream()
+                .map(post -> buildPostResponse(post, viewer))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Long countUrgentPosts() {
+        return postRepository.countByType("urgent");
+    }
+
 
 
     // ================= BUILD RESPONSE =================
