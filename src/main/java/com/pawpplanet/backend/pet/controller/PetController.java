@@ -59,4 +59,13 @@ public class     PetController {
     ) {
         return ResponseEntity.ok(petService.addMediaToGallery(id, request));
     }
+
+    @DeleteMapping("/{petId}/gallery/{mediaId}")
+    public ResponseEntity<Void> deletePetMedia(
+            @PathVariable Long petId,
+            @PathVariable Long mediaId
+    ) {
+        petService.deletePetMedia(petId, mediaId);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -323,6 +323,51 @@ public class PetServiceImpl implements PetService {
     }
 
     @Override
+    public void deletePetMedia(Long petId, Long mediaId) {
+        // 1️⃣ Validate pet exists
+        PetEntity pet = petRepository.findById(petId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Pet not found"
+                        )
+                );
+
+        // 2️⃣ Verify ownership
+        Long currentUserId = securityHelper.getCurrentUserId();
+
+        if (!pet.getOwnerId().equals(currentUserId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You are not allowed to delete media from this pet"
+            );
+        }
+
+        // 3️⃣ Find and validate media belongs to this pet
+        PetMediaEntity media = petMediaRepository.findById(mediaId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Media not found"
+                        )
+                );
+
+        if (!media.getPetId().equals(petId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "This media does not belong to the specified pet"
+            );
+        }
+
+        // 4️⃣ Soft delete the media
+        media.setIsDeleted(true);
+        media.setDeletedAt(LocalDateTime.now());
+        media.setDeletedBy(currentUserId);
+
+        petMediaRepository.save(media);
+    }
+
+    @Override
     public List<AllPetsResponseDTO> getAllMyPets() {
         // 1️⃣ Get current user
         Long currentUserId = securityHelper.getCurrentUserId();

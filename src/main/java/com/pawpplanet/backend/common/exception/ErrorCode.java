@@ -38,7 +38,10 @@ public enum ErrorCode {
     BREED_NOT_FOUND(404, "Breed not found"),
     ANIMAL_CLASS_NOT_FOUND(404, "Animal class not found"),
     INVALID_MEDIA_ROLE(400, "Invalid media role. Must be 'hero', 'gallery', or 'avatar'"),
-    INVALID_MEDIA_TYPE(400, "Invalid media type. Must be 'image' or 'video'")
+    INVALID_MEDIA_TYPE(400, "Invalid media type. Must be 'image' or 'video'"),
+    MEDIA_NOT_FOUND(404, "Media not found"),
+    ENCYCLOPEDIA_MEDIA_NOT_FOUND(404, "Encyclopedia media not found"),
+    UNAUTHORIZED_MEDIA_DELETE(403, "You do not have permission to delete this media")
     ;
     private int code;
     private String message;

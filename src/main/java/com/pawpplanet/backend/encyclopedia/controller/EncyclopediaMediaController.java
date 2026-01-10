@@ -121,5 +121,24 @@ public class EncyclopediaMediaController {
         resp.setStatusCode(0);
         return ResponseEntity.ok(resp);
     }
+
+    @DeleteMapping("/media/{mediaId}")
+    @Operation(
+            summary = "[ADMIN] Xóa media khỏi encyclopedia",
+            description = "Chỉ admin mới có thể xóa ảnh/video khỏi encyclopedia (soft delete).",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<Void> deleteEncyclopediaMedia(
+            @PathVariable Long mediaId
+    ) {
+        // Verify admin access
+        securityHelper.requireAdmin();
+
+        // Get admin user ID for audit trail
+        Long adminUserId = securityHelper.getCurrentUserId();
+
+        mediaService.deleteEncyclopediaMedia(mediaId, adminUserId);
+        return ResponseEntity.noContent().build();
+    }
 }
 

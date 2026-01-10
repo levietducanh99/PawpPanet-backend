@@ -15,6 +15,8 @@ public interface PetService {
 
     AddPetMediaResponse addMediaToGallery(Long petId, AddPetMediaRequest request);
 
+    void deletePetMedia(Long petId, Long mediaId);
+
     List<AllPetsResponseDTO> getAllMyPets();
 
     List<AllPetsResponseDTO> getAllUserPets(Long userId);

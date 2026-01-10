@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -206,6 +207,22 @@ public class EncyclopediaMediaService {
     private int getCurrentMaxDisplayOrder(String entityType, Long entityId) {
         return mediaRepository.findMaxDisplayOrderByEntityTypeAndEntityIdAndRole(entityType, entityId, "gallery")
                 .orElse(0);
+    }
+
+    /**
+     * Admin only: Soft delete encyclopedia media
+     */
+    @Transactional
+    public void deleteEncyclopediaMedia(Long mediaId, Long adminUserId) {
+        EncyclopediaMediaEntity media = mediaRepository.findById(mediaId)
+                .orElseThrow(() -> new AppException(ErrorCode.ENCYCLOPEDIA_MEDIA_NOT_FOUND));
+
+        // Soft delete
+        media.setIsDeleted(true);
+        media.setDeletedAt(LocalDateTime.now());
+        media.setDeletedBy(adminUserId);
+
+        mediaRepository.save(media);
     }
 }
 
